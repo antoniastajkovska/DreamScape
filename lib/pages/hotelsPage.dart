@@ -1,91 +1,89 @@
-import 'package:dream_scape/pages/taxiPage.dart';
+// ignore_for_file: prefer_const_constructors
+
+import 'package:dream_scape/main.dart';
+import 'package:dream_scape/providers/travelFormProvider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../hotels.dart';
 import '../widgets/appDrawer.dart';
 import '../widgets/logo.dart';
 
 class HotelsPage extends StatelessWidget {
-  final String toPlace;
-  final String fromPlace;
-  final int seniorCount;
-  final int adultCount;
-  final int childCount;
-  final double flightPrice;
+  const HotelsPage({super.key});
 
-  const HotelsPage({
-    required this.toPlace,
-    required this.seniorCount,
-    required this.adultCount,
-    required this.childCount,
-    required this.fromPlace,
-    super.key,
-    required this.flightPrice,
-  });
-
-  List<Map<String, dynamic>> get filteredHotels {
-    return hotelData.where((hotel) {
-      return hotel['city'].toLowerCase() == toPlace.toLowerCase();
-    }).toList();
+  List<Map<String, dynamic>> filterHotels(String? toPlace) {
+    if (toPlace == null || toPlace.isEmpty) return [];
+    return hotelData
+        .where((hotel) => hotel['city'].toLowerCase() == toPlace.toLowerCase())
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<TravelFormProvider>(context);
+    final filteredHotels = filterHotels(provider.toPlace);
+
     return Scaffold(
+      backgroundColor: Colors.blue[200],
+      drawer: const AppDrawer(),
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue.shade100,
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
+        backgroundColor: Colors.blue[200],
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+          onPressed: () {
+            Provider.of<TabProvider>(context, listen: false).setIndex(1);
           },
         ),
       ),
-      drawer: const AppDrawer(),
-      backgroundColor: Colors.lightBlue.shade100,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 30),
             const Center(child: LogoWidget()),
-            const SizedBox(height: 40),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.6, // Adjusted to make the cards taller
-                ),
-                itemCount: filteredHotels.length,
-                itemBuilder: (context, index) {
-                  final hotel = filteredHotels[index];
-                  return HotelCard(
-                    hotel: hotel,
-                    fromPlace: fromPlace,
-                    toPlace: toPlace,
-                    seniorCount: seniorCount,
-                    adultCount: adultCount,
-                    childCount: childCount,
-                    flightPrice: flightPrice,
-                  );
-                },
+            const SizedBox(height: 28),
+            const Center(
+              child: Text(
+                "Available Hotels",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 20),
-            NextButton(
-              fromPlace: fromPlace,
-              toPlace: toPlace,
-              seniorCount: seniorCount,
-              adultCount: adultCount,
-              childCount: childCount,
-              flightPrice: flightPrice,
+            const SizedBox(height: 24),
+            Expanded(
+              child: filteredHotels.isNotEmpty
+                  ? GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.65,
+                      ),
+                      itemCount: filteredHotels.length,
+                      itemBuilder: (context, index) {
+                        final hotel = filteredHotels[index];
+                        return HotelCard(
+                          hotel: hotel,
+                          flightPrice: provider.flightPrice,
+                        );
+                      },
+                    )
+                  : Center(
+                      child: Text(
+                        "No hotels available for your destination.",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
             ),
+            const SizedBox(height: 18),
+            DontBookHotelButton(
+              flightPrice: provider.flightPrice,
+            ),
+            const SizedBox(height: 18),
           ],
         ),
       ),
@@ -95,38 +93,28 @@ class HotelsPage extends StatelessWidget {
 
 class HotelCard extends StatelessWidget {
   final Map<String, dynamic> hotel;
-  final String fromPlace;
-  final String toPlace;
-  final int seniorCount;
-  final int adultCount;
-  final int childCount;
   final double flightPrice;
 
   const HotelCard({
-    super.key,
     required this.hotel,
-    required this.fromPlace,
-    required this.toPlace,
-    required this.seniorCount,
-    required this.adultCount,
-    required this.childCount,
     required this.flightPrice,
-  });
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<TravelFormProvider>(context, listen: false);
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      elevation: 8,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(12),
-              topRight: Radius.circular(12),
+              topLeft: Radius.circular(18),
+              topRight: Radius.circular(18),
             ),
             child: Image.asset(
               hotel['image'],
@@ -136,51 +124,36 @@ class HotelCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(10.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   hotel['name'],
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  'Price per night: \$${hotel['pricePerNight']}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    final totalPrice = hotel['pricePerNight'] + flightPrice;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TaxiPage(
-                          fromPlace: fromPlace,
-                          toPlace: toPlace,
-                          seniorCount: seniorCount,
-                          adultCount: adultCount,
-                          childCount: childCount,
-                          selectedHotel: hotel['name'],
-                          totalPrice: totalPrice,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromRGBO(192, 217, 247, 1.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Text('Price/night: \$${hotel['pricePerNight']}',
+                    style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      provider.setSelectedHotel(hotel['name']);
+                      Provider.of<TabProvider>(context, listen: false)
+                          .setIndex(3); // Go to TaxiPage
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pinkAccent,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
+                    child: const Text('Book Now',
+                        style: TextStyle(color: Colors.white)),
                   ),
-                  child: const Text('Book Now'),
                 ),
               ],
             ),
@@ -191,53 +164,32 @@ class HotelCard extends StatelessWidget {
   }
 }
 
-class NextButton extends StatelessWidget {
-  final String fromPlace;
-  final String toPlace;
-  final int seniorCount;
-  final int adultCount;
-  final int childCount;
+class DontBookHotelButton extends StatelessWidget {
   final double flightPrice;
 
-  const NextButton({
-    required this.fromPlace,
-    required this.toPlace,
-    required this.seniorCount,
-    required this.adultCount,
-    required this.childCount,
+  const DontBookHotelButton({
     required this.flightPrice,
-  });
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<TravelFormProvider>(context, listen: false);
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TaxiPage(
-                fromPlace: fromPlace,
-                toPlace: toPlace,
-                seniorCount: seniorCount,
-                adultCount: adultCount,
-                childCount: childCount,
-                selectedHotel: '',
-                totalPrice: flightPrice,
-              ),
-            ),
-          );
+          provider.setSelectedHotel('');
+          Provider.of<TabProvider>(context, listen: false).setIndex(3);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: Colors.pinkAccent,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
         child: const Text(
-          'Next',
+          "Don't book hotel",
           style: TextStyle(fontSize: 18, color: Colors.white),
         ),
       ),

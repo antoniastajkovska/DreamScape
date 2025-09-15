@@ -1,116 +1,191 @@
 import 'package:flutter/material.dart';
-import '../widgets/appDrawer.dart';
+import 'package:provider/provider.dart';
 import '../widgets/logo.dart';
+import '../providers/travelFormProvider.dart';
+import '../main.dart';
 
 class ReceiptPage extends StatelessWidget {
-  final String fromPlace;
-  final String toPlace;
-  final String hotel;
-  final int seniorTickets;
-  final int adultTickets;
-  final int childTickets;
-  final bool taxiChosen;
-  final double totalPrice;
-
-  const ReceiptPage({
-    super.key,
-    required this.fromPlace,
-    required this.toPlace,
-    required this.hotel,
-    required this.seniorTickets,
-    required this.adultTickets,
-    required this.childTickets,
-    required this.taxiChosen,
-    required this.totalPrice,
-  });
+  const ReceiptPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final tabProvider = Provider.of<TabProvider>(context, listen: false);
+    final provider = Provider.of<TravelFormProvider>(context);
+
+    const receiptTextStyle = TextStyle(
+      fontFamily: 'RobotoMono',
+      fontSize: 16,
+      color: Colors.black87,
+      height: 1.4,
+    );
+
     return Scaffold(
+      backgroundColor: Colors.blue[200],
       appBar: AppBar(
-        backgroundColor: Colors.lightBlue.shade100,
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
+        backgroundColor: Colors.blue[200],
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 26),
+          onPressed: () {
+            tabProvider.setIndex(3); // Always go to Receipt tab
           },
         ),
+        title: const Text(
+          'Receipt',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
-      drawer: const AppDrawer(),
-      backgroundColor: Colors.lightBlue.shade100,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 30),
-            const Center(child: LogoWidget()),
-            const SizedBox(height: 40),
-            Center(
-              child: Column(
-                children: [
-                  const Text(
-                    "Name: Jon Doe",
-                    style: TextStyle(fontSize: 18),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(253, 177, 224, 1.0),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: LogoWidget()),
+                const SizedBox(height: 18),
+                Divider(color: Colors.grey[300], thickness: 1),
+                const SizedBox(height: 12),
+                _buildReceiptRow('Name', 'Jon Doe', receiptTextStyle),
+                const SizedBox(height: 10),
+                _buildReceiptRow(
+                  'Flight',
+                  '${provider.fromPlace ?? ''} → ${provider.toPlace ?? ''}',
+                  receiptTextStyle,
+                ),
+                const SizedBox(height: 10),
+                _buildReceiptRow(
+                  'Hotel',
+                  provider.selectedHotel ?? '',
+                  receiptTextStyle,
+                ),
+                const SizedBox(height: 10),
+                Text('Tickets:',
+                    style:
+                        receiptTextStyle.copyWith(fontWeight: FontWeight.bold)),
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, top: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildReceiptRow('Senior',
+                          provider.seniorCount.toString(), receiptTextStyle,
+                          isLabelOnly: true),
+                      _buildReceiptRow('Adult', provider.adultCount.toString(),
+                          receiptTextStyle,
+                          isLabelOnly: true),
+                      _buildReceiptRow('Children',
+                          provider.childCount.toString(), receiptTextStyle,
+                          isLabelOnly: true),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Flight: $fromPlace - $toPlace",
-                    style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(height: 10),
+                _buildReceiptRow(
+                  'Taxi',
+                  provider.taxiChosen ? 'Chosen' : 'Not chosen',
+                  receiptTextStyle,
+                ),
+                const SizedBox(height: 20),
+                Divider(color: Colors.grey[300], thickness: 1),
+                const SizedBox(height: 18),
+                Text(
+                  "Total price:",
+                  style: receiptTextStyle.copyWith(
+                      fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                Text(
+                  "\$${(provider.flightPrice + (provider.taxiChosen ? provider.taxiPrice : 0)).toStringAsFixed(2)}",
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontFamily: 'RobotoMono',
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Hotel: $hotel",
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Tickets: Senior: $seniorTickets, Adult: $adultTickets, Children: $childTickets",
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Taxi: ${taxiChosen ? 'chosen' : 'not chosen'}",
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "Total price: \$${totalPrice.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Payment successful!"),
+                          backgroundColor: Color(0xFFF752C6),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[200],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 4,
+                    ),
+                    child: const Text(
+                      'Pay',
+                      style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Handle payment logic here
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    'Thank you for your purchase!',
+                    style: receiptTextStyle.copyWith(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey[500],
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Pay',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildReceiptRow(String label, String value, TextStyle style,
+      {bool isLabelOnly = false}) {
+    if (isLabelOnly) {
+      return Text(
+        '$label: $value',
+        style: style,
+      );
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label + ':', style: style),
+        Flexible(
+          child: Text(
+            value,
+            style: style,
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
     );
   }
 }

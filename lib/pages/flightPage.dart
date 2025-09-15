@@ -1,242 +1,285 @@
-import 'package:dream_scape/pages/hotelsPage.dart';
+// ignore_for_file: file_names, curly_braces_in_flow_control_structures
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../flights.dart';
-import '../widgets/appDrawer.dart';
 import '../widgets/logo.dart';
+import '../providers/travelFormProvider.dart';
+import '../providers/guestSelectorProvider.dart';
+import '../main.dart';
 
-class FlightPage extends StatefulWidget {
-  final String? fromPlace;
-  final String? toPlace;
-  final DateTime? startDate;
-  final DateTime? endDate;
-
-  const FlightPage(
-      {this.fromPlace, this.toPlace, this.startDate, this.endDate, super.key});
-
-  @override
-  State<FlightPage> createState() => _FlightPageState();
-}
-
-class _FlightPageState extends State<FlightPage> {
-  int seniorCount = 0;
-  int adultCount = 0;
-  int childCount = 0;
-  double price = 0;
-
-  List<Map<String, dynamic>> get filteredFlights {
-    return flightRawData.where((flight) {
-      if (widget.fromPlace != null && flight['From'] != widget.fromPlace) {
-        return false;
-      }
-      if (widget.toPlace != null && flight['To'] != widget.toPlace) {
-        return false;
-      }
-      return true;
-    }).toList();
-  }
-
+class FlightPage extends StatelessWidget {
+  const FlightPage({super.key});
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.lightBlue.shade100,
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
+    final guestSel = Provider.of<GuestSelectorProvider>(context);
+    return Consumer<TravelFormProvider>(
+      builder: (context, provider, _) {
+        final filteredFlights = flightRawData.where((flight) {
+          if (provider.fromPlace == null || provider.toPlace == null)
+            return false;
+          if (flight['From'] != provider.fromPlace) return false;
+          if (flight['To'] != provider.toPlace) return false;
+          return true;
+        }).toList();
+        return Scaffold(
+          backgroundColor: Colors.blue[200],
+          appBar: AppBar(
+            backgroundColor: Colors.blue[200],
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
               onPressed: () {
-                Scaffold.of(context).openDrawer();
+                Provider.of<TabProvider>(context, listen: false).setIndex(0);
               },
-            );
-          },
-        ),
-      ),
-      drawer: const AppDrawer(),
-      backgroundColor: Colors.lightBlue.shade100,
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 50),
-            const Center(child: LogoWidget()),
-            const SizedBox(height: 40),
-            SizedBox(
-              height: 261,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: filteredFlights.length,
-                itemBuilder: (context, index) {
-                  final flight = filteredFlights[index];
-                  return Card(
-                    margin: const EdgeInsets.only(right: 16),
-                    child: SizedBox(
-                      width: 200,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            title: null,
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 32),
+                  const LogoWidget(),
+                  const SizedBox(height: 60),
+                  const Text(
+                    'Available Flights',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  if (filteredFlights.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 70),
+                      child: Text(
+                        'No flights found for your search.',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                    ),
+                  if (filteredFlights.isNotEmpty)
+                    SizedBox(
+                      height: 310,
+                      child: Stack(
                         children: [
-                          Image.asset(
-                            flight['ImageURL'],
-                            height: 100,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              '\$${flight['Price']}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'From: ${flight['From']}',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                Text(
-                                  'To: ${flight['To']}',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                Text(
-                                  'Departure: ${flight['DepartureDate']}',
-                                  style: const TextStyle(
-                                      fontSize: 14, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Padding(
+                          ListView.builder(
+                            scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 4.0),
-                            child: ElevatedButton(
-                              onPressed:
-                                  (seniorCount + adultCount + childCount) > 0
-                                      ? () {
-                                          final price = flight["Price"] * (seniorCount + adultCount + childCount);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => HotelsPage(
-                                                fromPlace: widget.fromPlace ??
-                                                    'Unknown',
-                                                toPlace:
-                                                    widget.toPlace ?? 'Unknown',
-                                                seniorCount: seniorCount,
-                                                adultCount: adultCount,
-                                                childCount: childCount,
-                                                flightPrice: price,
+                                horizontal: 32, vertical: 3),
+                            itemCount: filteredFlights.length,
+                            itemBuilder: (context, index) {
+                              final flight = filteredFlights[index];
+                              final totalTickets = provider.seniorCount +
+                                  provider.adultCount +
+                                  provider.childCount;
+                              return Container(
+                                width: 228,
+                                margin: const EdgeInsets.only(right: 24),
+                                child: Card(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          child: Image.asset(
+                                            flight['ImageURL'],
+                                            height: 100,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          '\$${flight['Price']}',
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text('From: ${flight['From']}'),
+                                        Text('To: ${flight['To']}'),
+                                        Text(
+                                            'Departure: ${flight['DepartureDate']}'),
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: totalTickets > 0
+                                                ? () {
+                                                    final totalPrice =
+                                                        flight['Price'] *
+                                                            totalTickets;
+                                                    provider.setFlightPrice(
+                                                        totalPrice);
+                                                    Provider.of<TabProvider>(
+                                                            context,
+                                                            listen: false)
+                                                        .setIndex(2);
+                                                  }
+                                                : null,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.pinkAccent,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(15),
                                               ),
                                             ),
-                                          );
-                                        }
-                                      : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color.fromRGBO(192, 217, 247, 1.0),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
+                                            child: const Text('Book Now'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              child: const Text('Book Now'),
-                            ),
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildCounter('Senior', seniorCount, (value) {
-                  setState(() {
-                    seniorCount = value;
-                  });
-                }),
-                _buildCounter('Adult', adultCount, (value) {
-                  setState(() {
-                    adultCount = value;
-                  });
-                }),
-                _buildCounter('Child', childCount, (value) {
-                  setState(() {
-                    childCount = value;
-                  });
-                }),
-              ],
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => HotelsPage(
-                        fromPlace: widget.fromPlace ?? 'Unknown',
-                        toPlace: widget.toPlace ?? 'Unknown',
-                        seniorCount: seniorCount,
-                        adultCount: adultCount,
-                        childCount: childCount,
-                        flightPrice: price,
+                  const SizedBox(height: 38),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: SizedBox(
+                      height: 50,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.arrow_back_ios,
+                              color: Colors.white54, size: 20),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _pill(
+                                    context,
+                                    guestSel,
+                                    0,
+                                    "Senior",
+                                    provider.seniorCount,
+                                    () => provider.setSeniorCount(
+                                        provider.seniorCount + 1),
+                                    () => provider.setSeniorCount(
+                                        provider.seniorCount - 1),
+                                    Colors.deepPurple,
+                                    Icons.elderly,
+                                  ),
+                                  _pill(
+                                    context,
+                                    guestSel,
+                                    1,
+                                    "Adult",
+                                    provider.adultCount,
+                                    () => provider
+                                        .setAdultCount(provider.adultCount + 1),
+                                    () => provider
+                                        .setAdultCount(provider.adultCount - 1),
+                                    Colors.blue,
+                                    Icons.person,
+                                  ),
+                                  _pill(
+                                    context,
+                                    guestSel,
+                                    2,
+                                    "Child",
+                                    provider.childCount,
+                                    () => provider
+                                        .setChildCount(provider.childCount + 1),
+                                    () => provider
+                                        .setChildCount(provider.childCount - 1),
+                                    Colors.orange,
+                                    Icons.child_care,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white54, size: 20),
+                        ],
                       ),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                child: const Text(
-                  'Next',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                  const SizedBox(height: 38),
+                ],
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _pill(
+    BuildContext context,
+    GuestSelectorProvider guestSel,
+    int idx,
+    String label,
+    int value,
+    VoidCallback add,
+    VoidCallback remove,
+    Color color,
+    IconData icon,
+  ) {
+    final bool selected = guestSel.selected == idx;
+    return GestureDetector(
+      onTap: () => guestSel.setSelected(idx),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color.withOpacity(0.22) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? color : color.withOpacity(0.5),
+            width: selected ? 2.5 : 1,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(.19),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+            IconButton(
+              onPressed: value > 0 ? remove : null,
+              icon: const Icon(Icons.remove_circle, color: Colors.red),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            Text('$value'),
+            IconButton(
+              onPressed: add,
+              icon: const Icon(Icons.add_circle, color: Colors.green),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildCounter(String label, int value, Function(int) onChanged) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        Row(
-          children: [
-            IconButton(
-              onPressed: value > 0 ? () => onChanged(value - 1) : null,
-              icon: const Icon(Icons.remove_circle),
-              color: Colors.red,
-            ),
-            Text('$value', style: const TextStyle(fontSize: 16)),
-            IconButton(
-              onPressed: () => onChanged(value + 1),
-              icon: const Icon(Icons.add_circle),
-              color: Colors.green,
-            ),
-          ],
-        ),
-      ],
     );
   }
 }
