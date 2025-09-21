@@ -1,12 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../taxis.dart';
+import '../services/api_service.dart';
 import '../widgets/logo.dart';
 import '../providers/travelFormProvider.dart';
 import '../main.dart';
 
-class TaxiPage extends StatelessWidget {
-  TaxiPage({super.key});
+class TaxiPage extends StatefulWidget {
+  const TaxiPage({super.key});
+
+  @override
+  State<TaxiPage> createState() => _TaxiPageState();
+}
+
+class _TaxiPageState extends State<TaxiPage> {
+  List<Taxi> taxis = [];
+  bool isLoading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTaxis();
+  }
+
+  Future<void> _loadTaxis() async {
+    try {
+      final fetchedTaxis = await ApiService.getAllTaxis();
+      
+      setState(() {
+        taxis = fetchedTaxis;
+        isLoading = false;
+        error = null;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        error = e.toString();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +75,30 @@ class TaxiPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 28),
-                  if (taxiRawData.isEmpty)
+                  if (isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 70),
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 70),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Error loading taxis: $error',
+                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadTaxis,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (!isLoading && error == null && taxis.isEmpty)
                     const Padding(
                       padding: EdgeInsets.only(top: 70),
                       child: Text(
@@ -51,16 +106,16 @@ class TaxiPage extends StatelessWidget {
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
                     ),
-                  if (taxiRawData.isNotEmpty)
+                  if (!isLoading && error == null && taxis.isNotEmpty)
                     SizedBox(
                       height: 310,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 32, vertical: 3),
-                        itemCount: taxiRawData.length,
+                        itemCount: taxis.length,
                         itemBuilder: (context, index) {
-                          final taxi = taxiRawData[index];
+                          final taxi = taxis[index];
                           return Container(
                             width: 228,
                             margin: const EdgeInsets.only(right: 24),
@@ -77,7 +132,7 @@ class TaxiPage extends StatelessWidget {
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(15),
                                       child: Image.asset(
-                                        taxi['ImageURL'],
+                                        taxi.imageUrl,
                                         height: 100,
                                         width: double.infinity,
                                         fit: BoxFit.cover,
@@ -85,14 +140,14 @@ class TaxiPage extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 10),
                                     Text(
-                                      taxi['Provider'],
+                                      taxi.provider,
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     Text(
-                                      taxi['Type'],
+                                      taxi.type,
                                       style: const TextStyle(
                                         color: Colors.grey,
                                         fontWeight: FontWeight.w500,
@@ -100,7 +155,7 @@ class TaxiPage extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      '\$${taxi['Price'].toStringAsFixed(2)}',
+                                      '\$${taxi.price.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -109,7 +164,7 @@ class TaxiPage extends StatelessWidget {
                                       ),
                                     ),
                                     Text(
-                                      'ETA: ${taxi['EstimatedTime']}',
+                                      'ETA: ${taxi.estimatedTime}',
                                       style:
                                           const TextStyle(color: Colors.grey),
                                     ),
@@ -119,7 +174,7 @@ class TaxiPage extends StatelessWidget {
                                       child: ElevatedButton(
                                         onPressed: () {
                                           provider.setTaxiChosen(true);
-                                          provider.setTaxiPrice(taxi['Price']);
+                                          provider.setTaxiPrice(taxi.price);
                                           tabProvider
                                               .setIndex(4); // ReceiptPage
                                         },

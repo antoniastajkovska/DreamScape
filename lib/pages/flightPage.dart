@@ -2,26 +2,59 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../flights.dart';
+import '../services/api_service.dart';
 import '../widgets/logo.dart';
 import '../providers/travelFormProvider.dart';
 import '../providers/guestSelectorProvider.dart';
 import '../main.dart';
 
-class FlightPage extends StatelessWidget {
+class FlightPage extends StatefulWidget {
   const FlightPage({super.key});
+
+  @override
+  State<FlightPage> createState() => _FlightPageState();
+}
+
+class _FlightPageState extends State<FlightPage> {
+  List<Flight> flights = [];
+  bool isLoading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFlights();
+  }
+
+  Future<void> _loadFlights() async {
+    try {
+      final provider = Provider.of<TravelFormProvider>(context, listen: false);
+      final departureDate = provider.startDate?.toIso8601String().split('T')[0];
+      
+      final fetchedFlights = await ApiService.searchFlights(
+        fromCity: provider.fromPlace,
+        toCity: provider.toPlace,
+        departureDate: departureDate,
+      );
+      
+      setState(() {
+        flights = fetchedFlights;
+        isLoading = false;
+        error = null;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        error = e.toString();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final guestSel = Provider.of<GuestSelectorProvider>(context);
     return Consumer<TravelFormProvider>(
       builder: (context, provider, _) {
-        final filteredFlights = flightRawData.where((flight) {
-          if (provider.fromPlace == null || provider.toPlace == null)
-            return false;
-          if (flight['From'] != provider.fromPlace) return false;
-          if (flight['To'] != provider.toPlace) return false;
-          return true;
-        }).toList();
         return Scaffold(
           backgroundColor: Colors.blue[200],
           appBar: AppBar(
@@ -52,7 +85,30 @@ class FlightPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 28),
-                  if (filteredFlights.isEmpty)
+                  if (isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 70),
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 70),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Error loading flights: $error',
+                            style: const TextStyle(color: Colors.white, fontSize: 18),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadFlights,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (!isLoading && error == null && flights.isEmpty)
                     const Padding(
                       padding: EdgeInsets.only(top: 70),
                       child: Text(
@@ -60,7 +116,7 @@ class FlightPage extends StatelessWidget {
                         style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
                     ),
-                  if (filteredFlights.isNotEmpty)
+                  if (!isLoading && error == null && flights.isNotEmpty)
                     SizedBox(
                       height: 310,
                       child: Stack(
@@ -69,9 +125,9 @@ class FlightPage extends StatelessWidget {
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 32, vertical: 3),
-                            itemCount: filteredFlights.length,
+                            itemCount: flights.length,
                             itemBuilder: (context, index) {
-                              final flight = filteredFlights[index];
+                              final flight = flights[index];
                               final totalTickets = provider.seniorCount +
                                   provider.adultCount +
                                   provider.childCount;
@@ -93,7 +149,7 @@ class FlightPage extends StatelessWidget {
                                           borderRadius:
                                               BorderRadius.circular(15),
                                           child: Image.asset(
-                                            flight['ImageURL'],
+                                            flight.imageUrl,
                                             height: 100,
                                             width: double.infinity,
                                             fit: BoxFit.cover,
@@ -101,16 +157,15 @@ class FlightPage extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 10),
                                         Text(
-                                          '\$${flight['Price']}',
+                                          '\$${flight.price}',
                                           style: const TextStyle(
                                             fontSize: 22,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Text('From: ${flight['From']}'),
-                                        Text('To: ${flight['To']}'),
-                                        Text(
-                                            'Departure: ${flight['DepartureDate']}'),
+                                        Text('From: ${flight.fromCity}'),
+                                        Text('To: ${flight.toCity}'),
+                                        Text('Departure: ${flight.departureDate}'),
                                         const SizedBox(height: 10),
                                         SizedBox(
                                           width: double.infinity,
@@ -118,7 +173,7 @@ class FlightPage extends StatelessWidget {
                                             onPressed: totalTickets > 0
                                                 ? () {
                                                     final totalPrice =
-                                                        flight['Price'] *
+                                                        flight.price *
                                                             totalTickets;
                                                     provider.setFlightPrice(
                                                         totalPrice);

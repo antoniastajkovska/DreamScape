@@ -1,24 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AuthProvider extends ChangeNotifier {
-  final Map<String, String> _users = {};
+  final String _baseUrl = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080');
 
   String? _loggedInUserEmail;
   bool get isLoggedIn => _loggedInUserEmail != null;
   String? get loggedInUserEmail => _loggedInUserEmail;
 
-  bool register(String email, String password) {
-    if (_users.containsKey(email)) {
-      return false; // email already in use
+  Future<bool> register(String fullName, String email, String password) async {
+    final uri = Uri.parse('$_baseUrl/api/auth/register');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'fullName': fullName, 'email': email, 'password': password}),
+    );
+    if (res.statusCode == 200) {
+      _loggedInUserEmail = null;
+      notifyListeners();
+      return true;
     }
-    _users[email] = password;
-    _loggedInUserEmail = null;
-    notifyListeners();
-    return true;
+    return false;
   }
 
-  bool login(String email, String password) {
-    if (_users[email] == password) {
+  Future<bool> login(String email, String password) async {
+    final uri = Uri.parse('$_baseUrl/api/auth/login');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+    if (res.statusCode == 200) {
       _loggedInUserEmail = email;
       notifyListeners();
       return true;

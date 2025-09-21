@@ -20,7 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
 
-  void _register() {
+  Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       if (_passwordController.text != _confirmPasswordController.text) {
         setState(() {
@@ -30,12 +30,15 @@ class _RegisterPageState extends State<RegisterPage> {
       }
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      bool success = authProvider.register(
-          _emailController.text.trim(), _passwordController.text.trim());
+      final success = await authProvider.register(
+          _fullNameController.text.trim(),
+          _emailController.text.trim(),
+          _passwordController.text.trim());
 
-      if (success) {
+      if (success && mounted) {
         Navigator.of(context).pop(true);
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'Email already registered';
         });

@@ -18,15 +18,16 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
 
-  void _login() {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      bool success = authProvider.login(
+      final success = await authProvider.login(
           _emailController.text.trim(), _passwordController.text.trim());
 
-      if (success) {
+      if (success && mounted) {
         Navigator.of(context).pop(true);
       } else {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'Invalid email or password';
         });

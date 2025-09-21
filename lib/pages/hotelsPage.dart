@@ -4,24 +4,52 @@ import 'package:dream_scape/main.dart';
 import 'package:dream_scape/providers/travelFormProvider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../hotels.dart';
+import '../services/api_service.dart';
 import '../widgets/appDrawer.dart';
 import '../widgets/logo.dart';
 
-class HotelsPage extends StatelessWidget {
+class HotelsPage extends StatefulWidget {
   const HotelsPage({super.key});
 
-  List<Map<String, dynamic>> filterHotels(String? toPlace) {
-    if (toPlace == null || toPlace.isEmpty) return [];
-    return hotelData
-        .where((hotel) => hotel['city'].toLowerCase() == toPlace.toLowerCase())
-        .toList();
+  @override
+  State<HotelsPage> createState() => _HotelsPageState();
+}
+
+class _HotelsPageState extends State<HotelsPage> {
+  List<Hotel> hotels = [];
+  bool isLoading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHotels();
+  }
+
+  Future<void> _loadHotels() async {
+    try {
+      final provider = Provider.of<TravelFormProvider>(context, listen: false);
+      
+      final fetchedHotels = await ApiService.searchHotels(
+        city: provider.toPlace,
+      );
+      
+      setState(() {
+        hotels = fetchedHotels;
+        isLoading = false;
+        error = null;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        error = e.toString();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<TravelFormProvider>(context);
-    final filteredHotels = filterHotels(provider.toPlace);
 
     return Scaffold(
       backgroundColor: Colors.blue[200],
@@ -54,30 +82,50 @@ class HotelsPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: filteredHotels.isNotEmpty
-                  ? GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 0.65,
-                      ),
-                      itemCount: filteredHotels.length,
-                      itemBuilder: (context, index) {
-                        final hotel = filteredHotels[index];
-                        return HotelCard(
-                          hotel: hotel,
-                          flightPrice: provider.flightPrice,
-                        );
-                      },
-                    )
-                  : Center(
-                      child: Text(
-                        "No hotels available for your destination.",
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Error loading hotels: $error',
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _loadHotels,
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : hotels.isNotEmpty
+                          ? GridView.builder(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                childAspectRatio: 0.65,
+                              ),
+                              itemCount: hotels.length,
+                              itemBuilder: (context, index) {
+                                final hotel = hotels[index];
+                                return HotelCard(
+                                  hotel: hotel,
+                                  flightPrice: provider.flightPrice,
+                                );
+                              },
+                            )
+                          : const Center(
+                              child: Text(
+                                "No hotels available for your destination.",
+                                style: TextStyle(fontSize: 16, color: Colors.white),
+                              ),
+                            ),
             ),
             const SizedBox(height: 18),
             DontBookHotelButton(
@@ -92,7 +140,7 @@ class HotelsPage extends StatelessWidget {
 }
 
 class HotelCard extends StatelessWidget {
-  final Map<String, dynamic> hotel;
+  final Hotel hotel;
   final double flightPrice;
 
   const HotelCard({
@@ -117,7 +165,7 @@ class HotelCard extends StatelessWidget {
               topRight: Radius.circular(18),
             ),
             child: Image.asset(
-              hotel['image'],
+              hotel.imageUrl,
               height: 120,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -129,19 +177,19 @@ class HotelCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hotel['name'],
+                  hotel.name,
                   style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
-                Text('Price/night: \$${hotel['pricePerNight']}',
+                Text('Price/night: \$${hotel.pricePerNight}',
                     style: const TextStyle(fontSize: 13, color: Colors.grey)),
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      provider.setSelectedHotel(hotel['name']);
+                      provider.setSelectedHotel(hotel.name);
                       Provider.of<TabProvider>(context, listen: false)
                           .setIndex(3); // Go to TaxiPage
                     },

@@ -2,10 +2,84 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/logo.dart';
 import '../providers/travelFormProvider.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../main.dart';
 
-class ReceiptPage extends StatelessWidget {
+class ReceiptPage extends StatefulWidget {
   const ReceiptPage({super.key});
+
+  @override
+  State<ReceiptPage> createState() => _ReceiptPageState();
+}
+
+class _ReceiptPageState extends State<ReceiptPage> {
+  bool isSubmitting = false;
+
+  Future<void> _submitBooking() async {
+    if (isSubmitting) return;
+    
+    setState(() {
+      isSubmitting = true;
+    });
+
+    try {
+      final travelProvider = Provider.of<TravelFormProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      if (!authProvider.isLoggedIn) {
+        throw Exception('User not logged in');
+      }
+
+      final booking = Booking(
+        userEmail: authProvider.loggedInUserEmail!,
+        fromPlace: travelProvider.fromPlace ?? '',
+        toPlace: travelProvider.toPlace ?? '',
+        startDate: travelProvider.startDate?.toIso8601String().split('T')[0] ?? '',
+        endDate: travelProvider.endDate?.toIso8601String().split('T')[0] ?? '',
+        seniorCount: travelProvider.seniorCount,
+        adultCount: travelProvider.adultCount,
+        childCount: travelProvider.childCount,
+        flightPrice: travelProvider.flightPrice,
+        selectedFlightId: null, // You might want to track this
+        selectedHotel: travelProvider.selectedHotel,
+        selectedHotelId: null, // You might want to track this
+        hotelPrice: null, // You might want to calculate this
+        taxiChosen: travelProvider.taxiChosen,
+        selectedTaxiId: null, // You might want to track this
+        taxiPrice: travelProvider.taxiChosen ? travelProvider.taxiPrice : null,
+        totalPrice: travelProvider.flightPrice + (travelProvider.taxiChosen ? travelProvider.taxiPrice : 0),
+      );
+
+      await ApiService.createBooking(booking);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Booking created successfully!"),
+            backgroundColor: Color(0xFF4CAF50),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error creating booking: $e"),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,15 +195,7 @@ class ReceiptPage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Payment successful!"),
-                          backgroundColor: Color(0xFFF752C6),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
+                    onPressed: isSubmitting ? null : _submitBooking,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue[200],
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -138,13 +204,22 @@ class ReceiptPage extends StatelessWidget {
                       ),
                       elevation: 4,
                     ),
-                    child: const Text(
-                      'Pay',
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold),
-                    ),
+                    child: isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Pay',
+                            style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
