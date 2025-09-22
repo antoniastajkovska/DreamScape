@@ -7,6 +7,7 @@ import '../widgets/logo.dart';
 import '../providers/travelFormProvider.dart';
 import '../providers/guestSelectorProvider.dart';
 import '../main.dart';
+import '../flights.dart';
 
 class FlightPage extends StatefulWidget {
   const FlightPage({super.key});
@@ -29,25 +30,69 @@ class _FlightPageState extends State<FlightPage> {
   Future<void> _loadFlights() async {
     try {
       final provider = Provider.of<TravelFormProvider>(context, listen: false);
-      final departureDate = provider.startDate?.toIso8601String().split('T')[0];
       
-      final fetchedFlights = await ApiService.searchFlights(
-        fromCity: provider.fromPlace,
-        toCity: provider.toPlace,
-        departureDate: departureDate,
-      );
+      // Check if required fields are not null
+      if (provider.fromPlace == null || provider.toPlace == null || provider.startDate == null) {
+        setState(() {
+          isLoading = false;
+          error = 'Please complete the search form first';
+        });
+        return;
+      }
       
-      setState(() {
-        flights = fetchedFlights;
-        isLoading = false;
-        error = null;
-      });
+      final departureDate = provider.startDate!.toIso8601String().split('T')[0];
+      
+      try {
+        // Try to fetch from API first
+        final fetchedFlights = await ApiService.searchFlights(
+          fromCity: provider.fromPlace!,
+          toCity: provider.toPlace!,
+          departureDate: departureDate,
+        );
+        
+        setState(() {
+          flights = fetchedFlights;
+          isLoading = false;
+          error = null;
+        });
+      } catch (apiError) {
+        print('API Error: $apiError');
+        // Fallback to static data
+        final filteredFlights = _filterStaticFlights(
+          provider.fromPlace!,
+          provider.toPlace!,
+          departureDate,
+        );
+        
+        setState(() {
+          flights = filteredFlights;
+          isLoading = false;
+          error = null;
+        });
+      }
     } catch (e) {
       setState(() {
         isLoading = false;
         error = e.toString();
       });
     }
+  }
+
+  List<Flight> _filterStaticFlights(String fromCity, String toCity, String departureDate) {
+    return flightRawData
+        .where((flight) =>
+            flight['From'] == fromCity &&
+            flight['To'] == toCity &&
+            flight['DepartureDate'] == departureDate)
+        .map((flightData) => Flight(
+              id: flightRawData.indexOf(flightData),
+              fromCity: flightData['From'] as String,
+              toCity: flightData['To'] as String,
+              price: (flightData['Price'] as num).toDouble(),
+              imageUrl: flightData['ImageURL'] as String,
+              departureDate: flightData['DepartureDate'] as String,
+            ))
+        .toList();
   }
 
   @override
@@ -92,18 +137,35 @@ class _FlightPageState extends State<FlightPage> {
                     ),
                   if (error != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 70),
+                      padding: const EdgeInsets.only(top: 70, left: 20, right: 20),
                       child: Column(
                         children: [
-                          Text(
-                            'Error loading flights: $error',
-                            style: const TextStyle(color: Colors.white, fontSize: 18),
-                            textAlign: TextAlign.center,
+                          Icon(
+                            Icons.error_outline,
+                            color: Colors.white,
+                            size: 48,
                           ),
                           const SizedBox(height: 16),
-                          ElevatedButton(
+                          Text(
+                            'Error loading flights:',
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            error!,
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 20),
+                          ElevatedButton.icon(
                             onPressed: _loadFlights,
-                            child: const Text('Retry'),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.pinkAccent,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ],
                       ),

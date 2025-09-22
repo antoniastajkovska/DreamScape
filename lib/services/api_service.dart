@@ -16,13 +16,21 @@ class ApiService {
     if (departureDate != null) queryParams['departureDate'] = departureDate;
 
     final uri = Uri.parse('$_baseUrl/api/travel/flights').replace(queryParameters: queryParams);
+    print('Making request to: $uri'); // Debug print
+    
     final response = await http.get(uri);
+    print('Response status: ${response.statusCode}'); // Debug print
+    print('Response body: ${response.body}'); // Debug print
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = json.decode(response.body);
+      print('Parsed JSON list length: ${jsonList.length}'); // Debug print
+      if (jsonList.isNotEmpty) {
+        print('First item: ${jsonList.first}'); // Debug print
+      }
       return jsonList.map((json) => Flight.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load flights: ${response.statusCode}');
+      throw Exception('Failed to load flights: ${response.statusCode} - ${response.body}');
     }
   }
 
@@ -138,14 +146,20 @@ class Flight {
   });
 
   factory Flight.fromJson(Map<String, dynamic> json) {
-    return Flight(
-      id: json['id'],
-      fromCity: json['fromCity'],
-      toCity: json['toCity'],
-      price: (json['price'] as num).toDouble(),
-      imageUrl: json['imageUrl'],
-      departureDate: json['departureDate'],
-    );
+    try {
+      return Flight(
+        id: json['id'] ?? 0,
+        fromCity: json['From'] ?? json['fromCity'] ?? '',
+        toCity: json['To'] ?? json['toCity'] ?? '',
+        price: ((json['Price'] ?? json['price'] ?? 0.0) as num).toDouble(),
+        imageUrl: json['ImageURL'] ?? json['imageUrl'] ?? '',
+        departureDate: json['DepartureDate'] ?? json['departureDate'] ?? '',
+      );
+    } catch (e) {
+      print('Error parsing flight JSON: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 
   Map<String, dynamic> toJson() {
