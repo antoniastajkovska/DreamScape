@@ -89,8 +89,3 @@ The app focuses on **seamless navigation**, **user-friendly booking management**
 - Dart (bundled with Flutter)  
 - Android Studio / Xcode for running emulators  
 - PostgreSQL database + backend API configured  
-
-
-
-# Run the app
-flutter run
